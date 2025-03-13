@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>raf's file downloader</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; margin: 20px; background-color: #f5f5f5; }
+        h2 { color: orange; text-align: center; margin-bottom: 30px; }
+        .current-path { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            color: #666;
+            font-size: 14px;
+        }
+        .path-segment {
+            cursor: pointer;
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        .path-separator {
+            margin: 0 5px;
+            color: #999;
+        }
+        ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        li { 
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            width: 200px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        li:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        a { text-decoration: none; color: #333; display: block; padding: 15px; text-align: center; }
+        img { 
+            width: 100%; 
+            height: 150px; 
+            object-fit: cover; 
+            display: block;
+        }
+        .file-icon { 
+            width: 100%; 
+            height: 150px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #f0f0f0; 
+            font-size: 50px; 
+            color: #555; 
+        }
+        .file-name {
+            padding: 10px;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+        .directory {
+            cursor: pointer;
+        }
+        .directory .file-icon {
+            color: orange;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #d9534f;
+        }
+        .file-checkbox {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        .action-button {
+            background-color: orange;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: #ff8c00;
+        }
+        .action-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+        }
+        .progress-bar {
+            width: 300px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: orange;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+    <!-- Include JSZip library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <h2>raf's amazing file downloader</h2>
+    <div id="current-path" class="current-path"></div>
+    
+    <div class="action-bar">
+        <button id="select-all-btn" class="action-button">Select All</button>
+        <button id="download-zip-btn" class="action-button" disabled>Download as ZIP</button>
+    </div>
+    
+    <ul id="file-list" class="loading">Loading files...</ul>
+    
+    <div id="progress-overlay" class="progress-overlay" style="display: none;">
+        <h3>Creating ZIP Archive...</h3>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <div id="progress-text" class="progress-text">Preparing files...</div>
+    </div>
+    
+    <script>
+        let currentPath = '';
+        let currentFiles = [];
+        let selectedFiles = new Set();
+
+        async function fetchDirectoryStructure() {
+            try {
+                const response = await fetch('files.json');
+                if (!response.ok) throw new Error('Failed to load directory structure');
+                return await response.json();
+            } catch (error) {
+                console.error('Error loading directory structure:', error);
+                document.getElementById('file-list').className = 'error';
+                document.getElementById('file-list').innerHTML = 'Error loading files. Please check the files.json configuration.';
+                return null;
+            }
+        }
+
+        function updatePathDisplay() {
+            const pathElement = document.getElementById('current-path');
+            if (!currentPath) {
+                pathElement.innerHTML = 'Home';
+                return;
+            }
+
+            const segments = currentPath.split('/').filter(Boolean);
+            let pathHtml = '<span class="path-segment" onclick="navigateTo(\'\')">Home</span>';
+            let currentSegmentPath = '';
+
+            segments.forEach((segment, index) => {
+                currentSegmentPath += '/' + segment;
+                pathHtml += `<span class="path-separator">/</span>`;
+                pathHtml += `<span class="path-segment" onclick="navigateTo('${currentSegmentPath}')">${decodeURIComponent(segment)}</span>`;
+            });
+
+            pathElement.innerHTML = pathHtml;
+        }
+
+        function navigateTo(path) {
+            currentPath = path;
+            updatePathDisplay();
+            displayCurrentDirectory();
+        }
+
+        function getFileIcon(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            
+            if (!ext) return '📁'; // Directory
+
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '🖼️';
+            
+            const iconMap = {
+                'pdf': '📄',
+                'doc': '📝',
+                'docx': '📝',
+                'xls': '📊',
+                'xlsx': '📊',
+                'ppt': '📊',
+                'pptx': '📊',
+                'txt': '📝',
+                'zip': '🗜️',
+                'rar': '🗜️',
+                'mp3': '🎵',
+                'mp4': '🎬',
+                'mov': '🎬',
+                'avi': '🎬'
+            };
+            
+            return iconMap[ext] || '📄';
+        }
+
+        async function displayCurrentDirectory() {
+            const structure = await fetchDirectoryStructure();
+            if (!structure) return;
+
+            let current = structure;
+            if (currentPath) {
+                const segments = currentPath.split('/').filter(Boolean);
+                for (const segment of segments) {
+                    current = current.directories[segment];
+                    if (!current) {
+                        document.getElementById('file-list').innerHTML = 'Directory not found';
+                        return;
+                    }
+                }
+            }
+
+            selectedFiles.clear();
+            updateZipButton();
+
+            let fileList = '';
+            
+            // Add directories
+            Object.entries(current.directories || {}).forEach(([name, _]) => {
+                const displayName = decodeURIComponent(name);
+                fileList += `<li class="directory" onclick="navigateTo('${currentPath}/${name}')">
+                    <div class="file-icon">📁</div>
+                    <div class="file-name">${displayName}</div>
+                    <a onclick="event.stopPropagation()">Open</a>
+                </li>`;
+            });
+
+            // Add files
+            (current.files || []).forEach(file => {
+                const displayName = decodeURIComponent(file);
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.split('.').pop().toLowerCase());
+                const filePath = `files${currentPath}/${file}`;
+                
+                const checkbox = `<input type="checkbox" class="file-checkbox" data-path="${filePath}" onclick="event.stopPropagation(); toggleFileSelection('${filePath}')">`;
+                
+                let preview = '';
+                if (isImage) {
+                    preview = `<img src="${filePath}" alt="${displayName}">`;
+                } else {
+                    preview = `<div class="file-icon">${getFileIcon(file)}</div>`;
+                }
+                
+                fileList += `<li>
+                    ${checkbox}
+                    ${preview}
+                    <div class="file-name">${displayName}</div>
+                    <a href="${filePath}" download>Download</a>
+                </li>`;
+            });
+            
+            document.getElementById('file-list').innerHTML = fileList || 'No files available.';
+            document.getElementById('file-list').className = '';
+        }
+
+        function toggleFileSelection(filePath) {
+            if (selectedFiles.has(filePath)) {
+                selectedFiles.delete(filePath);
+            } else {
+                selectedFiles.add(filePath);
+            }
+            updateZipButton();
+        }
+
+        function updateZipButton() {
+            const zipButton = document.getElementById('download-zip-btn');
+            zipButton.disabled = selectedFiles.size === 0;
+        }
+
+        function selectAllFiles() {
+            const allCheckboxes = document.querySelectorAll('.file-checkbox');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            
+            const allSelected = selectedFiles.size === allCheckboxes.length;
+            
+            if (allSelected) {
+                selectedFiles.clear();
+                allCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                selectAllBtn.textContent = 'Select All';
+            } else {
+                allCheckboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                    selectedFiles.add(checkbox.dataset.path);
+                });
+                selectAllBtn.textContent = 'Deselect All';
+            }
+            
+            updateZipButton();
+        }
+
+        async function downloadAsZip() {
+            if (selectedFiles.size === 0) return;
+            
+            const progressOverlay = document.getElementById('progress-overlay');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            progressOverlay.style.display = 'flex';
+            progressFill.style.width = '0%';
+            progressText.textContent = 'Preparing files...';
+            
+            try {
+                const zip = new JSZip();
+                const selectedFilesList = Array.from(selectedFiles);
+                let processedCount = 0;
+                
+                for (const filePath of selectedFilesList) {
+                    const fileName = filePath.split('/').pop();
+                    progressText.textContent = `Downloading: ${fileName} (${processedCount + 1}/${selectedFilesList.length})`;
+                    
+                    try {
+                        const response = await fetch(filePath);
+                        if (!response.ok) throw new Error(`Failed to download ${fileName}`);
+                        
+                        const blob = await response.blob();
+                        zip.file(fileName, blob);
+                        
+                        processedCount++;
+                        progressFill.style.width = `${(processedCount / selectedFilesList.length) * 100}%`;
+                    } catch (error) {
+                        console.error(`Error downloading ${fileName}:`, error);
+                        processedCount++;
+                        progressFill.style.width = `${(processedCount / selectedFilesList.length) * 100}%`;
+                        progressText.textContent = `Error with ${fileName} (${processedCount}/${selectedFilesList.length})`;
+                    }
+                }
+                
+                progressText.textContent = 'Creating ZIP file...';
+                
+                const zipBlob = await zip.generateAsync({ 
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 }
+                }, (metadata) => {
+                    progressFill.style.width = `${metadata.percent}%`;
+                    progressText.textContent = `Creating ZIP: ${Math.round(metadata.percent)}%`;
+                });
+                
+                const currentFolder = currentPath.split('/').pop() || 'files';
+                saveAs(zipBlob, `${currentFolder}.zip`);
+                
+                progressText.textContent = 'Download complete!';
+                setTimeout(() => {
+                    progressOverlay.style.display = 'none';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error creating ZIP:', error);
+                progressText.textContent = 'Error creating ZIP file. Please try again.';
+                setTimeout(() => {
+                    progressOverlay.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Set up event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('select-all-btn').addEventListener('click', selectAllFiles);
+            document.getElementById('download-zip-btn').addEventListener('click', downloadAsZip);
+            displayCurrentDirectory();
+        });
+    </script>
+</body>
+</html>
