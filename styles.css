@@ -1,0 +1,286 @@
+body { font-family: 'Courier New', Courier, monospace; margin: 20px; background-color: #f5f5f5; }
+h2 { color: orange; text-align: center; margin-bottom: 30px; }
+.current-path { 
+    text-align: center; 
+    margin-bottom: 20px; 
+    color: #666;
+    font-size: 14px;
+}
+.path-segment {
+    cursor: pointer;
+    color: #0066cc;
+    text-decoration: underline;
+}
+.path-separator {
+    margin: 0 5px;
+    color: #999;
+}
+
+/* Action Bar */
+.action-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 0 20px;
+}
+.left-actions, .right-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Grid View */
+.grid-view {
+    list-style: none;
+    padding: 0;
+    margin: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.grid-view li { 
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    width: 200px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.grid-view li:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+/* List View */
+#file-list-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 0 20px;
+    overflow: hidden;
+    /* Only show the container in list view */
+    display: none;
+}
+
+.list-header {
+    display: flex;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #eee;
+    font-weight: bold;
+    padding: 10px 0;
+}
+
+.list-view {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.list-view li {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
+}
+
+.list-view li:hover {
+    background-color: #f5f5f5;
+}
+
+.list-cell {
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-cell {
+    width: 40px;
+    justify-content: center;
+}
+
+.icon-cell {
+    width: 60px;
+    justify-content: center;
+}
+
+.name-cell {
+    flex: 1;
+    min-width: 0;
+}
+
+.action-cell {
+    width: 120px;
+    justify-content: flex-end;
+}
+
+/* Common Elements */
+.file-icon { 
+    width: 40px; 
+    height: 40px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 24px;
+}
+
+.file-thumbnail {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    background-color: #f0f0f0;
+}
+
+.list-thumbnail {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.grid-view .file-icon,
+.grid-view .file-thumbnail {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    background: #ffffff;/*DO NOT CHANGE*/
+    border-radius: 8px;
+}
+
+.list-view .icon-cell img,
+.list-view .icon-cell .file-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.file-name {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    width: 100%;
+}
+
+.directory {
+    cursor: pointer;
+}
+
+.directory .file-icon {
+    color: orange;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+    color: #666;
+}
+
+.error {
+    text-align: center;
+    padding: 40px;
+    font-size: 18px;
+    color: #d9534f;
+}
+
+.file-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.grid-view .file-checkbox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+}
+
+.action-button {
+    background-color: orange;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    font-size: 14px;
+}
+
+.action-button:hover {
+    background-color: #ff8c00;
+}
+
+.action-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.list-view .action-button {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+/* Progress Overlay */
+.progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    color: white;
+}
+
+.progress-bar {
+    width: 300px;
+    height: 20px;
+    background-color: #333;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 20px;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: orange;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.progress-text {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* Show the container when in list view */
+.list-view + #file-list-container {
+    display: block;
+}

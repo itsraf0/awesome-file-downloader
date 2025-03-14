@@ -3,149 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>raf's file downloader</title>
-    <style>
-        body { font-family: 'Courier New', Courier, monospace; margin: 20px; background-color: #f5f5f5; }
-        h2 { color: orange; text-align: center; margin-bottom: 30px; }
-        .current-path { 
-            text-align: center; 
-            margin-bottom: 20px; 
-            color: #666;
-            font-size: 14px;
-        }
-        .path-segment {
-            cursor: pointer;
-            color: #0066cc;
-            text-decoration: underline;
-        }
-        .path-separator {
-            margin: 0 5px;
-            color: #999;
-        }
-        ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-        li { 
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            overflow: hidden;
-            width: 200px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-        }
-        li:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        }
-        a { text-decoration: none; color: #333; display: block; padding: 15px; text-align: center; }
-        img { 
-            width: 100%; 
-            height: 150px; 
-            object-fit: cover; 
-            display: block;
-        }
-        .file-icon { 
-            width: 100%; 
-            height: 150px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            background: #f0f0f0; 
-            font-size: 50px; 
-            color: #555; 
-        }
-        .file-name {
-            padding: 10px;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: center;
-        }
-        .directory {
-            cursor: pointer;
-        }
-        .directory .file-icon {
-            color: orange;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            font-size: 18px;
-            color: #666;
-        }
-        .error {
-            text-align: center;
-            padding: 40px;
-            font-size: 18px;
-            color: #d9534f;
-        }
-        .file-checkbox {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            z-index: 10;
-        }
-        .action-bar {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-            gap: 10px;
-        }
-        .action-button {
-            background-color: orange;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        .action-button:hover {
-            background-color: #ff8c00;
-        }
-        .action-button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .progress-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            color: white;
-        }
-        .progress-bar {
-            width: 300px;
-            height: 20px;
-            background-color: #333;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 20px;
-        }
-        .progress-fill {
-            height: 100%;
-            background-color: orange;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        .progress-text {
-            margin-top: 10px;
-            font-size: 14px;
-        }
-    </style>
-    <!-- Include JSZip library -->
+    <title>raf's amazing file downloader</title>
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
@@ -154,11 +13,24 @@
     <div id="current-path" class="current-path"></div>
     
     <div class="action-bar">
-        <button id="select-all-btn" class="action-button">Select All</button>
-        <button id="download-zip-btn" class="action-button" disabled>Download as ZIP</button>
+        <div class="left-actions">
+            <button id="select-all-btn" class="action-button">Select All</button>
+            <button id="download-zip-btn" class="action-button" disabled>Download as ZIP</button>
+        </div>
+        <div class="right-actions">
+            <button id="view-toggle-btn" class="action-button">
+                <span id="view-toggle-icon">Grid View</span>
+            </button>
+        </div>
     </div>
     
-    <ul id="file-list" class="loading">Loading files...</ul>
+    <div class="list-header" style="display: none;">
+        <div class="list-cell checkbox-cell"></div>
+        <div class="list-cell icon-cell">Type</div>
+        <div class="list-cell name-cell">Name</div>
+        <div class="list-cell action-cell">Action</div>
+    </div>
+    <ul id="file-list" class="loading grid-view">Loading files...</ul>
     
     <div id="progress-overlay" class="progress-overlay" style="display: none;">
         <h3>Creating ZIP Archive...</h3>
@@ -167,21 +39,31 @@
         </div>
         <div id="progress-text" class="progress-text">Preparing files...</div>
     </div>
+
+    <div id="download-progress-overlay" class="progress-overlay" style="display: none;">
+        <h3>Downloading File...</h3>
+        <div class="progress-bar">
+            <div id="download-progress-fill" class="progress-fill"></div>
+        </div>
+        <div id="download-progress-text" class="progress-text">Starting download...</div>
+    </div>
     
     <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
         let currentPath = '';
         let currentFiles = [];
         let selectedFiles = new Set();
+        let isListView = false;
 
         async function fetchDirectoryStructure() {
             try {
-                const response = await fetch('files.json');
+                const response = await fetch(`${API_BASE_URL}/files?path=${encodeURIComponent(currentPath)}`);
                 if (!response.ok) throw new Error('Failed to load directory structure');
                 return await response.json();
             } catch (error) {
                 console.error('Error loading directory structure:', error);
                 document.getElementById('file-list').className = 'error';
-                document.getElementById('file-list').innerHTML = 'Error loading files. Please check the files.json configuration.';
+                document.getElementById('file-list').innerHTML = 'Error loading files. Please check the server configuration.';
                 return null;
             }
         }
@@ -212,11 +94,82 @@
             displayCurrentDirectory();
         }
 
+        async function displayCurrentDirectory() {
+            const structure = await fetchDirectoryStructure();
+            if (!structure) return;
+
+            selectedFiles.clear();
+            updateZipButton();
+
+            let fileList = '';
+            const fileListElement = document.getElementById('file-list');
+            const listHeader = document.querySelector('.list-header');
+            
+            // Update view-specific elements
+            listHeader.style.display = isListView ? 'flex' : 'none';
+            fileListElement.className = isListView ? 'list-view' : 'grid-view';
+            
+            // Add directories
+            Object.entries(structure.directories || {}).forEach(([name, info]) => {
+                const displayName = decodeURIComponent(name);
+                if (isListView) {
+                    fileList += `
+                        <li class="directory" onclick="navigateTo('${currentPath}/${name}')">
+                            <div class="list-cell checkbox-cell"></div>
+                            <div class="list-cell icon-cell">📁</div>
+                            <div class="list-cell name-cell">${displayName}</div>
+                            <div class="list-cell action-cell"></div>
+                        </li>`;
+                } else {
+                    fileList += `
+                        <li class="directory" onclick="navigateTo('${currentPath}/${name}')">
+                            <div class="file-icon">📁</div>
+                            <div class="file-name">${displayName}</div>
+                        </li>`;
+                }
+            });
+
+            // Add files
+            (structure.files || []).forEach(file => {
+                const displayName = decodeURIComponent(file.name);
+                const checkbox = `<input type="checkbox" class="file-checkbox" data-id="${file.id}" onclick="event.stopPropagation(); toggleFileSelection('${file.id}')">`;
+                
+                let preview;
+                if (file.isImage && file.thumbnailLink) {
+                    preview = `<img src="${file.thumbnailLink}" alt="${displayName}" class="file-thumbnail">`;
+                } else {
+                    preview = `<div class="file-icon">${getFileIcon(file.name)}</div>`;
+                }
+                
+                if (isListView) {
+                    fileList += `
+                        <li>
+                            <div class="list-cell checkbox-cell">${checkbox}</div>
+                            <div class="list-cell icon-cell">${file.isImage && file.thumbnailLink ? 
+                                `<img src="${file.thumbnailLink}" alt="${displayName}" class="list-thumbnail">` : 
+                                `<div class="file-icon">${getFileIcon(file.name)}</div>`}</div>
+                            <div class="list-cell name-cell">${displayName}</div>
+                            <div class="list-cell action-cell">
+                                <button class="action-button" onclick="downloadSingleFile('${file.id}', '${displayName}')">Download</button>
+                            </div>
+                        </li>`;
+                } else {
+                    fileList += `
+                        <li>
+                            ${checkbox}
+                            ${preview}
+                            <div class="file-name">${displayName}</div>
+                            <button class="action-button" onclick="downloadSingleFile('${file.id}', '${displayName}')">Download</button>
+                        </li>`;
+                }
+            });
+            
+            document.getElementById('file-list').innerHTML = fileList || 'No files available.';
+        }
+
         function getFileIcon(fileName) {
             const ext = fileName.split('.').pop().toLowerCase();
             
-            if (!ext) return '📁'; // Directory
-
             if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '🖼️';
             
             const iconMap = {
@@ -239,76 +192,13 @@
             return iconMap[ext] || '📄';
         }
 
-        async function displayCurrentDirectory() {
-            const structure = await fetchDirectoryStructure();
-            if (!structure) return;
-
-            let current = structure;
-            if (currentPath) {
-                const segments = currentPath.split('/').filter(Boolean);
-                for (const segment of segments) {
-                    current = current.directories[segment];
-                    if (!current) {
-                        document.getElementById('file-list').innerHTML = 'Directory not found';
-                        return;
-                    }
-                }
-            }
-
-            selectedFiles.clear();
-            updateZipButton();
-
-            let fileList = '';
-            
-            // Add directories
-            Object.entries(current.directories || {}).forEach(([name, _]) => {
-                const displayName = decodeURIComponent(name);
-                fileList += `<li class="directory" onclick="navigateTo('${currentPath}/${name}')">
-                    <div class="file-icon">📁</div>
-                    <div class="file-name">${displayName}</div>
-                    <a onclick="event.stopPropagation()">Open</a>
-                </li>`;
-            });
-
-            // Add files
-            (current.files || []).forEach(file => {
-                const displayName = decodeURIComponent(file);
-                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.split('.').pop().toLowerCase());
-                const filePath = `files${currentPath}/${file}`;
-                
-                const checkbox = `<input type="checkbox" class="file-checkbox" data-path="${filePath}" onclick="event.stopPropagation(); toggleFileSelection('${filePath}')">`;
-                
-                let preview = '';
-                if (isImage) {
-                    preview = `<img src="${filePath}" alt="${displayName}">`;
-                } else {
-                    preview = `<div class="file-icon">${getFileIcon(file)}</div>`;
-                }
-                
-                fileList += `<li>
-                    ${checkbox}
-                    ${preview}
-                    <div class="file-name">${displayName}</div>
-                    <a href="${filePath}" download>Download</a>
-                </li>`;
-            });
-            
-            document.getElementById('file-list').innerHTML = fileList || 'No files available.';
-            document.getElementById('file-list').className = '';
-        }
-
-        function toggleFileSelection(filePath) {
-            if (selectedFiles.has(filePath)) {
-                selectedFiles.delete(filePath);
+        function toggleFileSelection(fileId) {
+            if (selectedFiles.has(fileId)) {
+                selectedFiles.delete(fileId);
             } else {
-                selectedFiles.add(filePath);
+                selectedFiles.add(fileId);
             }
             updateZipButton();
-        }
-
-        function updateZipButton() {
-            const zipButton = document.getElementById('download-zip-btn');
-            zipButton.disabled = selectedFiles.size === 0;
         }
 
         function selectAllFiles() {
@@ -317,21 +207,114 @@
             
             const allSelected = selectedFiles.size === allCheckboxes.length;
             
-            if (allSelected) {
-                selectedFiles.clear();
-                allCheckboxes.forEach(checkbox => {
+            allCheckboxes.forEach(checkbox => {
+                const fileId = checkbox.dataset.id;
+                if (allSelected) {
+                    selectedFiles.delete(fileId);
                     checkbox.checked = false;
-                });
-                selectAllBtn.textContent = 'Select All';
-            } else {
-                allCheckboxes.forEach(checkbox => {
+                } else {
+                    selectedFiles.add(fileId);
                     checkbox.checked = true;
-                    selectedFiles.add(checkbox.dataset.path);
-                });
-                selectAllBtn.textContent = 'Deselect All';
-            }
+                }
+            });
             
+            selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
             updateZipButton();
+        }
+
+        function updateZipButton() {
+            const zipButton = document.getElementById('download-zip-btn');
+            zipButton.disabled = selectedFiles.size === 0;
+        }
+
+        async function downloadSingleFile(fileId, fileName) {
+            try {
+                const progressOverlay = document.getElementById('download-progress-overlay');
+                const progressFill = document.getElementById('download-progress-fill');
+                const progressText = document.getElementById('download-progress-text');
+                
+                progressOverlay.style.display = 'flex';
+                progressFill.style.width = '0%';
+                progressText.textContent = 'Starting download...';
+
+                const response = await fetch(`${API_BASE_URL}/download/${fileId}`);
+                if (!response.ok) throw new Error('Failed to download file');
+                
+                const reader = response.body.getReader();
+                const contentLength = +response.headers.get('Content-Length') || 0;
+                
+                let receivedLength = 0;
+                const chunks = [];
+
+                while(true) {
+                    const {done, value} = await reader.read();
+                    
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    receivedLength += value.length;
+                    
+                    const progress = (receivedLength / contentLength) * 100;
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `Downloading: ${Math.round(progress)}%`;
+                }
+
+                progressText.textContent = 'Preparing file...';
+                
+                const blob = new Blob(chunks);
+                saveAs(blob, fileName);
+                
+                progressText.textContent = 'Download complete!';
+                setTimeout(() => {
+                    progressOverlay.style.display = 'none';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error downloading file:', error);
+                const progressText = document.getElementById('download-progress-text');
+                progressText.textContent = 'Download failed. Please try again.';
+                setTimeout(() => {
+                    document.getElementById('download-progress-overlay').style.display = 'none';
+                }, 2000);
+                alert('Failed to download file. Please try again.');
+            }
+        }
+
+        async function downloadFile(fileId) {
+            const response = await fetch(`${API_BASE_URL}/download/${fileId}`);
+            if (!response.ok) throw new Error('Failed to download file');
+            
+            const reader = response.body.getReader();
+            const contentLength = +response.headers.get('Content-Length') || 0;
+            
+            let receivedLength = 0;
+            const chunks = [];
+
+            while(true) {
+                const {done, value} = await reader.read();
+                
+                if (done) break;
+                
+                chunks.push(value);
+                receivedLength += value.length;
+            }
+
+            return {
+                blob: new Blob(chunks),
+                fileName: getFileNameFromResponse(response)
+            };
+        }
+
+        function getFileNameFromResponse(response) {
+            const disposition = response.headers.get('content-disposition');
+            if (disposition && disposition.includes('filename=')) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) {
+                    return matches[1].replace(/['"]/g, '');
+                }
+            }
+            return 'download';
         }
 
         async function downloadAsZip() {
@@ -350,24 +333,20 @@
                 const selectedFilesList = Array.from(selectedFiles);
                 let processedCount = 0;
                 
-                for (const filePath of selectedFilesList) {
-                    const fileName = filePath.split('/').pop();
-                    progressText.textContent = `Downloading: ${fileName} (${processedCount + 1}/${selectedFilesList.length})`;
-                    
+                for (const fileId of selectedFilesList) {
                     try {
-                        const response = await fetch(filePath);
-                        if (!response.ok) throw new Error(`Failed to download ${fileName}`);
+                        const { blob, fileName } = await downloadFile(fileId);
+                        progressText.textContent = `Downloading: ${fileName} (${processedCount + 1}/${selectedFilesList.length})`;
                         
-                        const blob = await response.blob();
                         zip.file(fileName, blob);
                         
                         processedCount++;
                         progressFill.style.width = `${(processedCount / selectedFilesList.length) * 100}%`;
                     } catch (error) {
-                        console.error(`Error downloading ${fileName}:`, error);
+                        console.error(`Error downloading file:`, error);
                         processedCount++;
                         progressFill.style.width = `${(processedCount / selectedFilesList.length) * 100}%`;
-                        progressText.textContent = `Error with ${fileName} (${processedCount}/${selectedFilesList.length})`;
+                        progressText.textContent = `Error downloading file (${processedCount}/${selectedFilesList.length})`;
                     }
                 }
                 
@@ -399,10 +378,18 @@
             }
         }
 
+        function toggleView() {
+            isListView = !isListView;
+            const viewToggleIcon = document.getElementById('view-toggle-icon');
+            viewToggleIcon.textContent = isListView ? 'Grid View' : 'List View';
+            displayCurrentDirectory();
+        }
+
         // Set up event listeners
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('select-all-btn').addEventListener('click', selectAllFiles);
             document.getElementById('download-zip-btn').addEventListener('click', downloadAsZip);
+            document.getElementById('view-toggle-btn').addEventListener('click', toggleView);
             displayCurrentDirectory();
         });
     </script>
